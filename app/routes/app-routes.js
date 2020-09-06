@@ -1,8 +1,9 @@
 const express = require("express");
 const moment = require("moment");
-const _ = require("lodash");
 const { v4: uuidv4 } = require("uuid");
 const AWS = require("aws-sdk");
+
+const isEmpty = require("../utils/isEmpty");
 
 const router = express.Router();
 AWS.config.update({
@@ -100,6 +101,58 @@ router.get("/api/notes", (req, res, next) => {
       });
     } else {
       return res.status(200).send(data);
+    }
+  });
+});
+
+router.get("/api/note/:note_id", (req, res, next) => {
+  const { note_id } = req.params;
+  const params = {
+    TableName: tableName,
+    IndexName: "note_id-index",
+    KeyConditionExpression: "note_id = :note_id",
+    ExpressionAttributeValues: {
+      ":note_id": note_id,
+    },
+    Limit: 1,
+  };
+
+  documentClient.query(params, (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(err.statusCode).send({
+        message: err.message,
+        status: err.statusCode,
+      });
+    } else {
+      if (!isEmpty(data.Items)) {
+        return res.status(200).send(data.Items[0]);
+      } else {
+        return res.status(404).send();
+      }
+    }
+  });
+});
+
+router.delete("/api/note/:timestamp", (req, res, next) => {
+  const timestamp = parseInt(req.params.timestamp);
+  const params = {
+    TableName: tableName,
+    Key: {
+      user_id,
+      timestamp,
+    },
+  };
+
+  documentClient.delete(params, (err, data) => {
+    if (err) {
+      console.log(err);
+      return res.status(err.statusCode).send({
+        message: err.message,
+        status: err.statusCode,
+      });
+    } else {
+      return res.status(200).send();
     }
   });
 });
